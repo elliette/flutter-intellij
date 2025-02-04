@@ -26,6 +26,7 @@ public class DevToolsUrl {
   public Boolean isBright;
   public String widgetId;
   public Float fontSize;
+  public int zoomLevel;
   public String hide;
   private final FlutterSdkVersion flutterSdkVersion;
   private final FlutterSdkUtil sdkUtil;
@@ -148,6 +149,7 @@ public class DevToolsUrl {
       this.colorHexCode = builder.devToolsUtils.getColorHexCode();
       this.isBright = builder.devToolsUtils.getIsBackgroundBright();
       this.fontSize = builder.devToolsUtils.getFontSize();
+      this.zoomLevel = builder.devToolsUtils.getZoomLevel();
     }
     this.hide = builder.hide;
     this.widgetId = builder.widgetId;
@@ -196,9 +198,6 @@ public class DevToolsUrl {
         }
       }
     }
-    if (fontSize != null) {
-      params.add("fontSize=" + fontSize);
-    }
     if (ideFeature != null) {
       params.add("ideFeature=" + ideFeature.value);
     }
@@ -232,5 +231,9 @@ public class DevToolsUrl {
     if (fontSize == null || !fontSize.equals(newFontSize)) {
       fontSize = newFontSize;
     }
+  }
+
+  public void maybeUpdateZoom() {
+    final int zoomLevel = devToolsUtils.getZoomLevel();
   }
 }

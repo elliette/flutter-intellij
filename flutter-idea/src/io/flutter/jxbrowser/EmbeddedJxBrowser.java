@@ -22,6 +22,8 @@ import com.teamdev.jxbrowser.ui.event.KeyPressed;
 import com.teamdev.jxbrowser.view.swing.BrowserView;
 import com.teamdev.jxbrowser.view.swing.callback.DefaultAlertCallback;
 import com.teamdev.jxbrowser.view.swing.callback.DefaultConfirmCallback;
+import com.teamdev.jxbrowser.zoom.Zoom;
+import com.teamdev.jxbrowser.zoom.ZoomLevel;
 import io.flutter.settings.FlutterSettings;
 import io.flutter.utils.AsyncUtils;
 import io.flutter.utils.JxBrowserUtils;
@@ -30,6 +32,9 @@ import io.flutter.view.EmbeddedTab;
 import io.flutter.utils.LabelInput;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import com.teamdev.jxbrowser.zoom.ZoomLevel;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,6 +49,7 @@ class EmbeddedJxBrowserTab implements EmbeddedTab {
   private final Engine engine;
   private Browser browser;
   private static final Logger LOG = Logger.getInstance(EmbeddedJxBrowserTab.class);
+  private final ZoomLevelSelector zoomSelector = new ZoomLevelSelector();
 
   public EmbeddedJxBrowserTab(Engine engine) {
     this.engine = engine;
@@ -51,6 +57,7 @@ class EmbeddedJxBrowserTab implements EmbeddedTab {
     try {
       this.browser = engine.newBrowser();
       this.browser.settings().enableTransparentBackground();
+
       this.browser.on(ConsoleMessageReceived.class, event -> {
         final ConsoleMessage consoleMessage = event.consoleMessage();
         LOG.info("Browser message(" + consoleMessage.level().name() + "): " + consoleMessage.message());
@@ -61,6 +68,15 @@ class EmbeddedJxBrowserTab implements EmbeddedTab {
     }
     catch (Exception | Error ex) {
       LOG.info(ex);
+    }
+  }
+
+  @Override
+  public void zoom(int zoomPercent) {
+    final Zoom zoom = this.browser.zoom();
+    if (zoom != null) {
+      final ZoomLevel zoomLevel = zoomSelector.getClosestZoomLevel(zoomPercent);
+      zoom.level(zoomLevel);
     }
   }
 
@@ -243,3 +259,43 @@ public class EmbeddedJxBrowser extends EmbeddedBrowser {
     showLabelsWithUrlLink(inputs, contentManager);
   }
 }
+
+class ZoomLevelSelector {
+
+  private final Map<Integer, ZoomLevel> zoomLevels;
+
+  public ZoomLevelSelector() {
+    zoomLevels = new HashMap<>();
+    zoomLevels.put(25, ZoomLevel.P_25);
+    zoomLevels.put(33, ZoomLevel.P_33);
+    zoomLevels.put(50, ZoomLevel.P_50);
+    zoomLevels.put(67, ZoomLevel.P_67);
+    zoomLevels.put(75, ZoomLevel.P_75);
+    zoomLevels.put(80, ZoomLevel.P_80);
+    zoomLevels.put(90, ZoomLevel.P_90);
+    zoomLevels.put(100, ZoomLevel.P_100);
+    zoomLevels.put(110, ZoomLevel.P_110);
+    zoomLevels.put(125, ZoomLevel.P_125);
+    zoomLevels.put(150, ZoomLevel.P_150);
+    zoomLevels.put(175, ZoomLevel.P_175);
+    zoomLevels.put(200, ZoomLevel.P_200);
+    zoomLevels.put(250, ZoomLevel.P_250);
+    zoomLevels.put(300, ZoomLevel.P_300);
+    zoomLevels.put(400, ZoomLevel.P_400);
+    zoomLevels.put(500, ZoomLevel.P_500);
+  }
+
+  public @NotNull ZoomLevel getClosestZoomLevel(int zoomPercent) {
+    ZoomLevel closest = ZoomLevel.P_100;
+    int minDifference = Integer.MAX_VALUE;
+
+    for (Map.Entry<Integer, ZoomLevel> entry : zoomLevels.entrySet()) {
+      int currentDifference = Math.abs(zoomPercent - entry.getKey());
+      if (currentDifference < minDifference) {
+        minDifference = currentDifference;
+        closest = entry.getValue();
+      }
+    }
+
+    return closest;
+  }}

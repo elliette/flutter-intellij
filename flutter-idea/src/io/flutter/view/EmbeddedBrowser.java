@@ -17,6 +17,7 @@ import com.intellij.ui.components.labels.LinkLabel;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
 import com.intellij.util.ui.JBUI;
+import com.teamdev.jxbrowser.zoom.ZoomLevel;
 import icons.FlutterIcons;
 import io.flutter.devtools.DevToolsUrl;
 import io.flutter.utils.AsyncUtils;
@@ -263,7 +264,9 @@ public abstract class EmbeddedBrowser {
         if (devToolsUrl == null) return;
         devToolsUrl.maybeUpdateColor();
         devToolsUrl.maybeUpdateFontSize();
+        devToolsUrl.maybeUpdateZoom();
         tab.embeddedTab.loadUrl(devToolsUrl.getUrlString());
+        // tab.embeddedTab.zoom();
       });
     });
   }

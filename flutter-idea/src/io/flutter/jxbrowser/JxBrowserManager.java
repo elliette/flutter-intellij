@@ -222,7 +222,7 @@ public class JxBrowserManager {
     }
 
     // If installation future has not finished, we don't want to overwrite it. There could be other code listening for the previous attempt
-    // to succeed or fail.
+    // to succeed or fail.g
     // We expect to create a new CompletableFuture only if the previous installation attempt failed.
     if (installation.isDone()) {
       installation = new CompletableFuture<>();

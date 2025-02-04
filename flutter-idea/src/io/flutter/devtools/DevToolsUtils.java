@@ -5,11 +5,18 @@
  */
 package io.flutter.devtools;
 
+import com.intellij.designer.designSurface.ZoomProvider;
+import com.intellij.ide.ui.UISettingsUtils;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.ui.ColorUtil;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.scale.JBUIScale;
+import com.intellij.ui.scale.Scaler;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import com.intellij.util.ui.JBUI;
+
+import java.util.spi.ToolProvider;
 
 public class DevToolsUtils {
   public static String findWidgetId(String url) {
@@ -38,5 +45,15 @@ public class DevToolsUtils {
       return UIUtil.getFontSize(UIUtil.FontSize.NORMAL);
     }
     return (float) manager.getGlobalScheme().getEditorFontSize();
+  }
+
+  public int getZoomLevel() {
+    final UISettingsUtils uiSettingsUtils = UISettingsUtils.getInstance();
+    final float ideScale = uiSettingsUtils.getCurrentIdeScale();
+    if (ideScale != 1) {
+      return Math.round(ideScale * 100);
+    }
+    return 100;
+    // final float editorFontSize = uiSettingsUtils.getScaledEditorFontSize();
   }
 }
