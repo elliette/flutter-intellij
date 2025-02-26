@@ -12,6 +12,7 @@ public class FlutterIcons {
   public static final Icon FlutterDefault = load("/icons/expui/flutter.svg");
   public static final Icon DevToolsDeepLinks = load("/icons/expui/deepLinks.svg");
   public static final Icon DevTools = load("/icons/expui/devTools.svg");
+  // TODO: add icons here.
   public static final Icon DevToolsExtensions = load("/icons/expui/extensions.svg");
   public static final Icon DevToolsInspector = load("icons/expui/inspector.svg");
 

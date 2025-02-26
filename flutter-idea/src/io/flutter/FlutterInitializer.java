@@ -14,6 +14,7 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.editor.LogicalPosition;
 import com.intellij.openapi.editor.colors.EditorColorsListener;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.extensions.PluginId;
@@ -51,6 +52,14 @@ import io.flutter.survey.FlutterSurveyNotifications;
 import io.flutter.utils.FlutterModuleUtils;
 import io.flutter.view.FlutterViewFactory;
 import org.jetbrains.annotations.NotNull;
+import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.event.CaretEvent;
+import com.intellij.openapi.editor.event.CaretListener;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.vfs.VirtualFile;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -176,6 +185,9 @@ public class FlutterInitializer implements StartupActivity {
     // Initialize notifications for theme changes.
     setUpThemeChangeNotifications(project);
 
+    // Initialize notifications for active location changes.
+    setUpActiveLocationChangeNotifications(project);
+
     // TODO(jwren) For releases in early H1 2025, include this message as well as a new one if the user is using a Flutter SDK version that
     //  is not supported, i.e. match VS Code implementation.
     // Send unsupported SDK notifications if relevant.
@@ -211,6 +223,15 @@ public class FlutterInitializer implements StartupActivity {
       busSubscribed = true;
     });
     t1.start();
+  }
+
+  private void setUpActiveLocationChangeNotifications(@NotNull Project project) {
+    FlutterSdk sdk = FlutterSdk.getFlutterSdk(project);
+    if (sdk == null || !sdk.getVersion().canUseDtd()) return;
+
+    Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+    CaretListener locationChangeListener = new LocationChangeListener();
+    editor.getCaretModel().addCaretListener(locationChangeListener);
   }
 
   private void sendThemeChangedEvent(@NotNull Project project) {
@@ -337,5 +358,24 @@ public class FlutterInitializer implements StartupActivity {
     }
 
     ApplicationManager.getApplication().runWriteAction(() -> wanted.setCurrent(project));
+  }
+}
+
+class LocationChangeListener implements CaretListener {
+
+  @Override
+  public void caretPositionChanged(@NotNull CaretEvent event) {
+    // Handle the cursor position change here.
+    final LogicalPosition position = event.getNewPosition();
+    int line = position.getLine();
+    int column = position.getColumn();
+    Editor editor = event.getEditor();
+    VirtualFile virtualFile = FileDocumentManager.getInstance().getFile(editor.getDocument());
+    if (virtualFile != null) {
+      final String filePath = virtualFile.getPath();
+      System.out.println("PATH IS " + filePath);
+    }
+
+    System.out.println("Caret moved to line: " + line + ", column: " + column);
   }
 }

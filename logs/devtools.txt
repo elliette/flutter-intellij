@@ -1,0 +1,13 @@
+!! ⚠️ PLEASE REVIEW THIS LOG FOR SENSITIVE INFORMATION BEFORE SHARING ⚠️ !!
+Dart Code extension: 3.105.20250225
+Flutter extension: 3.104.0 (not activated)
+
+App: Visual Studio Code
+App Host: desktop
+Version: mac 1.96.3
+
+
+Logging Categories:
+    DevTools
+
+Wed Feb 26 2025 [15:46:07 GMT-0800 (Pacific Standard Time)] Log file started
