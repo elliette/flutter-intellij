@@ -189,7 +189,7 @@ public class EmbeddedJxBrowser extends EmbeddedBrowser {
   private @NotNull String jxBrowserErrorMessage() {
     final String defaultError = "JX Browser engine failed to start";
     if (jxBrowserManager == null) {
-      return defaultError;
+      return "JX Browser manager is null";
     }
     switch (jxBrowserManager.getStatus()) {
       case NOT_INSTALLED:
@@ -201,9 +201,9 @@ public class EmbeddedJxBrowser extends EmbeddedBrowser {
       case INSTALLATION_FAILED:
         final InstallationFailedReason failedReason = jxBrowserManager.getLatestFailureReason();
         final @Nullable String errorFromFailedMessage = jxBrowserErrorFromFailedReason(failedReason);
-        return errorFromFailedMessage != null ? errorFromFailedMessage : defaultError;
+        return errorFromFailedMessage != null ? errorFromFailedMessage : "Failed to start here";
       default:
-        return defaultError;
+        return "Returning default error";
     }
   }
 
