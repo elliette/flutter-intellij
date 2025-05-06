@@ -38,6 +38,7 @@ import io.flutter.sdk.FlutterSdkUtil;
 import io.flutter.utils.JsonUtils;
 import io.flutter.utils.MostlySilentColoredProcessHandler;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -49,6 +50,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.Optional;
 
 public class DevToolsService {
   private static final Logger LOG = Logger.getInstance(DevToolsService.class);
@@ -62,6 +64,8 @@ public class DevToolsService {
   private DaemonApi daemonApi;
   private ProcessHandler process;
   private AtomicReference<CompletableFuture<DevToolsInstance>> devToolsFutureRef = new AtomicReference<>(null);
+
+  private Boolean serverStarting = false;
 
   @NotNull
   public static DevToolsService getInstance(@NotNull final Project project) {
@@ -117,9 +121,14 @@ public class DevToolsService {
   }
 
   private void startServer() {
-    ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      final FlutterSdk sdk = FlutterSdk.getFlutterSdk(project);
+    // If the server has already started, don't try starting it again.
+    if (serverStarting) {
+      return;
+    }
+    serverStarting = true;
 
+    ApplicationManager.getApplication().executeOnPooledThread(() -> {
+      // The following can be removed when we stop supporting Dart SDK versions before 2.15.0.
       boolean dartDevToolsSupported = false;
       final DartSdk dartSdk = DartSdk.getDartSdk(project);
       if (dartSdk != null) {
@@ -127,64 +136,117 @@ public class DevToolsService {
         assert version != null;
         dartDevToolsSupported = version.compareTo(2, 15, 0) >= 0;
       }
-
-      if (dartDevToolsSupported) {
-        // This condition means we can use `dart devtools` to start.
-        final WorkspaceCache workspaceCache = WorkspaceCache.getInstance(project);
-        if (workspaceCache.isBazel()) {
-          // This is only for internal usages.
-          setUpWithDart(createCommand(workspaceCache.get().getRoot().getPath(), workspaceCache.get().getDevToolsScript(),
-                                      ImmutableList.of("--machine")));
-        }
-        else {
-          final String localDevToolsDir = Registry.stringValue(LOCAL_DEVTOOLS_DIR);
-          if (!localDevToolsDir.isEmpty()) {
-            // This is only for development to check integration with a locally run DevTools server.
-            // To enable, follow the instructions in:
-            // https://github.com/flutter/flutter-intellij/blob/master/CONTRIBUTING.md#developing-with-local-devtools
-            final DtdUtils dtdUtils = new DtdUtils();
-            try {
-              final DartToolingDaemonService dtdService = dtdUtils.readyDtdService(project).get();
-              final String dtdUri = dtdService.getUri();
-
-              final List<String> args = new ArrayList<>();
-              args.add("serve");
-              args.add("--machine");
-              args.add("--dtd-uri=" + dtdUri);
-              final String localDevToolsArgs = Registry.stringValue(LOCAL_DEVTOOLS_ARGS);
-              if (!localDevToolsArgs.isEmpty()) {
-                args.addAll(Arrays.stream(localDevToolsArgs.split(" ")).toList());
-              }
-
-              setUpInDevMode(createCommand(localDevToolsDir, "dt", args));
-            }
-            catch (InterruptedException | java.util.concurrent.ExecutionException e) {
-              throw new RuntimeException(e);
-            }
-            return;
-          }
-
-          // The Dart plugin should start DevTools with DTD, so try to use this instance of DevTools before trying to start another.
-          final String dartPluginUri = DartDevToolsService.getInstance(project).getDevToolsHostAndPort();
-          if (dartPluginUri != null) {
-            String[] parts = dartPluginUri.split(":");
-            String host = parts[0];
-            Integer port = Integer.parseInt(parts[1]);
-            if (host != null && port != null) {
-              devToolsFutureRef.get().complete(new DevToolsInstance(host, port));
-              return;
-            }
-          }
-
-          setUpWithDart(createCommand(DartSdk.getDartSdk(project).getHomePath(),
-                                      DartSdk.getDartSdk(project).getHomePath() + File.separatorChar + "bin" + File.separatorChar + "dart",
-                                      ImmutableList.of("devtools", "--machine")));
-        }
-      }
-      else {
+      // If DevTools server support doesn't exist, start the daemon.
+      if (!dartDevToolsSupported) {
         setUpWithDaemon();
+        return;
       }
+
+      // If we are in a Bazel workspace, start the server. Note: This is only for internal usages.
+      final WorkspaceCache workspaceCache = WorkspaceCache.getInstance(project);
+      if (workspaceCache.isBazel()) {
+        setUpWithDart(createCommand(workspaceCache.get().getRoot().getPath(), workspaceCache.get().getDevToolsScript(),
+                                    ImmutableList.of("--machine")));
+                                    return;
+      }
+
+      final String localDevToolsDir = Registry.stringValue(LOCAL_DEVTOOLS_DIR);
+      if (!localDevToolsDir.isEmpty()) {
+        // This is only for development to check integration with a locally run DevTools server.
+        // To enable, follow the instructions in:
+        // https://github.com/flutter/flutter-intellij/blob/master/CONTRIBUTING.md#developing-with-local-devtools
+        final DtdUtils dtdUtils = new DtdUtils();
+        try {
+          final DartToolingDaemonService dtdService = dtdUtils.readyDtdService(project).get();
+          final String dtdUri = dtdService.getUri();
+
+          final List<String> args = new ArrayList<>();
+          args.add("serve");
+          args.add("--machine");
+          args.add("--dtd-uri=" + dtdUri);
+          final String localDevToolsArgs = Registry.stringValue(LOCAL_DEVTOOLS_ARGS);
+          if (!localDevToolsArgs.isEmpty()) {
+            args.addAll(Arrays.stream(localDevToolsArgs.split(" ")).toList());
+          }
+
+          setUpInDevMode(createCommand(localDevToolsDir, "dt", args));
+        }
+        catch (InterruptedException | java.util.concurrent.ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+        return;
+      }
+
+      // If the Dart plugin does not start DevTools, then call `dart devtools` to start the server.
+      final Boolean dartPluginStartsDevTools = true;
+      if (!dartPluginStartsDevTools) {
+              setUpWithDart(createCommand(DartSdk.getDartSdk(project).getHomePath(),
+                                  DartSdk.getDartSdk(project).getHomePath() + File.separatorChar + "bin" + File.separatorChar + "dart",
+                                  ImmutableList.of("devtools", "--machine")));
+      }
+
+      // Wait for the Dart plugin to finish starting DevTools with DTD.
+      @Nullable DevToolsInstance devTools;
+      try {
+        final Optional<DevToolsInstance> devToolsOptional = checkForDartPluginInitiatedDevToolsWithRetries().get();
+        devTools = devToolsOptional.get();
+      }
+      catch (java.util.concurrent.ExecutionException e) {
+        devTools = null;
+      }
+      catch (InterruptedException e) {
+        devTools = null;
+      }
+
+      if (devTools != null) {
+        devToolsFutureRef.get().complete(devTools);
+        return;
+      }
+
+      System.out.println("FAILED TO START DEVTOOLS!!!!");
     });
+  }
+
+  private CompletableFuture<Optional<DevToolsInstance>> checkForDartPluginInitiatedDevToolsWithRetries() {
+    final CompletableFuture<Optional<DevToolsInstance>> devToolsFuture = new CompletableFuture<>();
+
+    final long msBetweenRetries = 1500;
+    int retries = 10;
+    try {
+      while (retries >= 0) {
+        final @Nullable DevToolsInstance devTools = createDevToolsInstanceFromDartPluginUri();
+        if (devTools != null) {
+          System.out.println("DevTools ready! retry number " + retries);
+          devToolsFuture.complete(Optional.of(devTools));
+          return devToolsFuture;
+        } else {
+          System.out.println("DevTools not ready yet, retry number " + retries);
+          Thread.sleep(msBetweenRetries);
+          retries--;
+        }
+      }
+    } catch (InterruptedException e) {
+      System.out.println("Received interrupted exception!");
+    }
+
+    devToolsFuture.complete(Optional.ofNullable(null));
+    return devToolsFuture;
+  }
+
+  private @Nullable DevToolsInstance createDevToolsInstanceFromDartPluginUri() {
+    final String dartPluginUri = DartDevToolsService.getInstance(project).getDevToolsHostAndPort();
+    if (dartPluginUri == null) {
+      return null;
+    }
+
+    String[] parts = dartPluginUri.split(":");
+    String host = parts[0];
+    Integer port = Integer.parseInt(parts[1]);
+    if (host == null || port == null) {
+      return null;
+    }
+
+    return new DevToolsInstance(host, port);
   }
 
   private void setUpInDevMode(GeneralCommandLine command) {
