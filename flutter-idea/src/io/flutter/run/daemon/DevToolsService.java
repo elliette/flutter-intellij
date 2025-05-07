@@ -65,7 +65,7 @@ public class DevToolsService {
   private ProcessHandler process;
   private AtomicReference<CompletableFuture<DevToolsInstance>> devToolsFutureRef = new AtomicReference<>(null);
 
-  private Boolean serverStarting = false;
+  private Boolean serverStarted = false;
 
   @NotNull
   public static DevToolsService getInstance(@NotNull final Project project) {
@@ -91,7 +91,7 @@ public class DevToolsService {
       }
     }) == null) {
       devToolsFutureRef.set(new CompletableFuture<>());
-      startServer();
+      startServer(true);
     }
 
     return devToolsFutureRef.get();
@@ -109,34 +109,32 @@ public class DevToolsService {
 
     if (futureInstance == null) {
       devToolsFutureRef.set(new CompletableFuture<>());
-      startServer();
+      startServer(true);
     }
     else if (!futureInstance.isDone()) {
       futureInstance.cancel(true);
       devToolsFutureRef.set(new CompletableFuture<>());
-      startServer();
+      startServer(true);
     }
 
     return devToolsFutureRef.get();
   }
 
   private void startServer() {
-    // If the server has already started, don't try starting it again.
-    if (serverStarting) {
+    startServer(false);
+  }
+
+  private void startServer(Boolean forceRestart) {
+    // If the server has already started, don't try starting it again, unless this is a
+    // request to force restart it.
+    if (!forceRestart && serverStarted) {
       return;
     }
-    serverStarting = true;
+    serverStarted = true;
 
     ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      // The following can be removed when we stop supporting Dart SDK versions before 2.15.0.
-      boolean dartDevToolsSupported = false;
-      final DartSdk dartSdk = DartSdk.getDartSdk(project);
-      if (dartSdk != null) {
-        final Version version = Version.parseVersion(dartSdk.getVersion());
-        assert version != null;
-        dartDevToolsSupported = version.compareTo(2, 15, 0) >= 0;
-      }
-      // If DevTools server support doesn't exist, start the daemon.
+      // If DevTools is not supported, start the daemon instead.
+      final boolean dartDevToolsSupported = dartSdkSupportsDartDevTools();
       if (!dartDevToolsSupported) {
         setUpWithDaemon();
         return;
@@ -191,20 +189,28 @@ public class DevToolsService {
         final Optional<DevToolsInstance> devToolsOptional = checkForDartPluginInitiatedDevToolsWithRetries().get();
         devTools = devToolsOptional.get();
       }
-      catch (java.util.concurrent.ExecutionException e) {
-        devTools = null;
-      }
-      catch (InterruptedException e) {
-        devTools = null;
-      }
-
-      if (devTools != null) {
-        devToolsFutureRef.get().complete(devTools);
+      catch (java.util.concurrent.ExecutionException | InterruptedException e) {
+        devToolsFutureRef.get().completeExceptionally(e);
         return;
       }
 
-      System.out.println("FAILED TO START DEVTOOLS!!!!");
+      if (devTools == null) {
+        devToolsFutureRef.get().completeExceptionally(new Exception("Timed out waiting for DevTools from Dart Plugin."));
+        return;
+      }
+
+      devToolsFutureRef.get().complete(devTools);
     });
+  }
+
+  private Boolean dartSdkSupportsDartDevTools() {
+    final DartSdk dartSdk = DartSdk.getDartSdk(project);
+    if (dartSdk != null) {
+      final Version version = Version.parseVersion(dartSdk.getVersion());
+      assert version != null;
+      return version.compareTo(2, 15, 0) >= 0;
+    }
+    return false;
   }
 
   private CompletableFuture<Optional<DevToolsInstance>> checkForDartPluginInitiatedDevToolsWithRetries() {
