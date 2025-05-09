@@ -46,11 +46,15 @@ public class DevToolsViewUtils {
   final String toolWindowId;
   boolean devToolsLoadedInBrowser = false;
 
-  public void initDevToolsView(@NotNull Project project, @NotNull ToolWindow toolWindow,  @NotNull String devToolsRoute) {
+  public void initDevToolsView(@NotNull Project project, @NotNull ToolWindow toolWindow, @NotNull String devToolsRoute) {
     initDevToolsView(project, toolWindow, devToolsRoute, false, null);
   }
 
-  public void initDevToolsView(@NotNull Project project, @NotNull ToolWindow toolWindow,  @NotNull String devToolsRoute, @NotNull boolean isHiddenRoute, @Nullable Consumer<EmbeddedBrowser> onBrowserLoaded) {
+  public void initDevToolsView(@NotNull Project project,
+                               @NotNull ToolWindow toolWindow,
+                               @NotNull String devToolsRoute,
+                               @NotNull boolean isHiddenRoute,
+                               @Nullable Consumer<EmbeddedBrowser> onBrowserLoaded) {
     loadDevToolsInEmbeddedBrowser(project, toolWindow, devToolsRoute, isHiddenRoute, onBrowserLoaded);
     maybeReloadDevToolsWhenVisible(project, toolWindow, devToolsRoute, isHiddenRoute, onBrowserLoaded);
   }
@@ -85,7 +89,11 @@ public class DevToolsViewUtils {
     replacePanelLabel(toolWindow, center);
   }
 
-  private void loadDevToolsInEmbeddedBrowser(@NotNull Project project, @NotNull ToolWindow toolWindow, @NotNull String devToolsRoute, @NotNull boolean isHiddenRoute, @Nullable Consumer<EmbeddedBrowser> onBrowserLoaded) {
+  private void loadDevToolsInEmbeddedBrowser(@NotNull Project project,
+                                             @NotNull ToolWindow toolWindow,
+                                             @NotNull String devToolsRoute,
+                                             @NotNull boolean isHiddenRoute,
+                                             @Nullable Consumer<EmbeddedBrowser> onBrowserLoaded) {
     presentLabel(toolWindow, "Loading " + toolWindowId + "...");
     FlutterSdk sdk = FlutterSdk.getFlutterSdk(project);
     FlutterSdkVersion sdkVersion = sdk == null ? null : sdk.getVersion();
@@ -101,7 +109,8 @@ public class DevToolsViewUtils {
         final DevToolsUrl.Builder devToolsUrlBuilder = new DevToolsUrl.Builder();
         if (isHiddenRoute) {
           devToolsUrlBuilder.setHide(devToolsRoute);
-        } else {
+        }
+        else {
           devToolsUrlBuilder.setPage(devToolsRoute);
         }
 
@@ -132,7 +141,11 @@ public class DevToolsViewUtils {
     );
   }
 
-  private void maybeReloadDevToolsWhenVisible(@NotNull Project project, @NotNull ToolWindow toolWindow, @NotNull String devToolsRoute, @Nullable boolean isHiddenRoute, @Nullable Consumer<EmbeddedBrowser> onBrowserLoaded) {
+  private void maybeReloadDevToolsWhenVisible(@NotNull Project project,
+                                              @NotNull ToolWindow toolWindow,
+                                              @NotNull String devToolsRoute,
+                                              @Nullable boolean isHiddenRoute,
+                                              @Nullable Consumer<EmbeddedBrowser> onBrowserLoaded) {
     MessageBusConnection connection = project.getMessageBus().connect();
     connection.subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
       @Override
@@ -154,7 +167,8 @@ public class DevToolsViewUtils {
       return false;
     }
 
-    final String restartDevToolsMessage = "</br></br><h2>Try switching to another Flutter panel and back again to re-start the server.</h2>";
+    final String restartDevToolsMessage =
+      "</br></br><h2>Try switching to another Flutter panel and back again to re-start the server.</h2>";
     if (error != null) {
       presentLabel(toolWindow, "<h1>Flutter DevTools start-up failed.</h1>" + restartDevToolsMessage);
       return false;

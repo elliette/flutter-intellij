@@ -8,15 +8,8 @@ package io.flutter.devtools;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
-import com.intellij.ui.content.ContentManager;
-import io.flutter.FlutterUtils;
-import io.flutter.actions.RefreshToolWindowAction;
-import io.flutter.bazel.WorkspaceCache;
-import io.flutter.run.daemon.DevToolsService;
 import io.flutter.sdk.FlutterSdk;
 import io.flutter.sdk.FlutterSdkVersion;
-import io.flutter.utils.AsyncUtils;
-import io.flutter.utils.OpenApiUtils;
 import io.flutter.view.EmbeddedBrowser;
 import io.flutter.view.FlutterViewMessages;
 import io.flutter.view.DevToolsViewUtils;
@@ -24,8 +17,6 @@ import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 public class DevToolsExtensionsViewFactory implements ToolWindowFactory {
@@ -50,7 +41,9 @@ public class DevToolsExtensionsViewFactory implements ToolWindowFactory {
   @Override
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow window) {
     RemainingDevToolsViewService service = project.getService(RemainingDevToolsViewService.class);
-    Consumer<EmbeddedBrowser> onBrowserLoaded = (embeddedBrowser) -> { service.setEmbeddedBrowser(embeddedBrowser); };
+    Consumer<EmbeddedBrowser> onBrowserLoaded = (embeddedBrowser) -> {
+      service.setEmbeddedBrowser(embeddedBrowser);
+    };
     devToolsViewUtils.initDevToolsView(project, window, "all-except-extensions", true, onBrowserLoaded);
   }
 
