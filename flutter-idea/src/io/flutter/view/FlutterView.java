@@ -82,7 +82,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
 
   @VisibleForTesting
   @NotNull
-  public final ViewUtils viewUtils;
+  public final DevToolsViewUtils devToolsViewUtils;
 
   @NotNull
   private final Project myProject;
@@ -95,7 +95,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
   private final JxBrowserManager jxBrowserManager;
 
   public FlutterView(@NotNull Project project) {
-    this(project, JxBrowserManager.getInstance(), new JxBrowserUtils(), new ViewUtils());
+    this(project, JxBrowserManager.getInstance(), new JxBrowserUtils(), new DevToolsViewUtils(TOOL_WINDOW_ID));
   }
 
   @VisibleForTesting
@@ -103,11 +103,11 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
   protected FlutterView(@NotNull Project project,
                         @NotNull JxBrowserManager jxBrowserManager,
                         JxBrowserUtils jxBrowserUtils,
-                        ViewUtils viewUtils) {
+                        DevToolsViewUtils devToolsViewUtils) {
     myProject = project;
     this.jxBrowserUtils = jxBrowserUtils;
     this.jxBrowserManager = jxBrowserManager;
-    this.viewUtils = viewUtils != null ? viewUtils : new ViewUtils();
+    this.devToolsViewUtils = devToolsViewUtils != null ? devToolsViewUtils : new DevToolsViewUtils(TOOL_WINDOW_ID);
 
     shouldAutoHorizontalScroll.listen(state::setShouldAutoScroll);
     highlightNodesShownInBothTrees.listen(state::setHighlightNodesShownInBothTrees);
@@ -196,7 +196,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
                 new LabelInput("The embedded browser failed to load. Error: " + error),
                 openDevToolsLabel(app, toolWindow, ideFeature)
               );
-              viewUtils.presentClickableLabel(toolWindow, inputs);
+              devToolsViewUtils.presentClickableLabel(toolWindow, inputs);
             });
           }));
       };
@@ -219,7 +219,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
           .getUrlString(),
         null
       );
-      viewUtils.presentLabel(toolWindow, "DevTools inspector has been opened in the browser.");
+      devToolsViewUtils.presentLabel(toolWindow, "DevTools inspector has been opened in the browser.");
     }
   }
 
@@ -249,7 +249,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
     verifyEventDispatchThread();
 
     devToolsInstallCount += 1;
-    viewUtils.presentLabel(toolWindow, getInstallingDevtoolsLabel());
+    devToolsViewUtils.presentLabel(toolWindow, getInstallingDevtoolsLabel());
 
     openInspectorWithDevTools(app, toolWindow, isEmbedded, ideFeature);
 
@@ -268,7 +268,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
     }
     this.toolWindowListener.updateOnWindowOpen(() -> {
       devToolsInstallCount += 1;
-      viewUtils.presentLabel(toolWindow, getInstallingDevtoolsLabel());
+      devToolsViewUtils.presentLabel(toolWindow, getInstallingDevtoolsLabel());
       openInspectorWithDevTools(app, toolWindow, isEmbedded, ideFeature, true);
     });
   }
@@ -301,12 +301,12 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
         // TODO(helinx): Restart DevTools server if there's an error.
         if (error != null) {
           LOG.error(error);
-          viewUtils.presentLabel(toolWindow, DEVTOOLS_FAILED_LABEL);
+          devToolsViewUtils.presentLabel(toolWindow, DEVTOOLS_FAILED_LABEL);
           return;
         }
 
         if (instance == null) {
-          viewUtils.presentLabel(toolWindow, DEVTOOLS_FAILED_LABEL);
+          devToolsViewUtils.presentLabel(toolWindow, DEVTOOLS_FAILED_LABEL);
           return;
         }
 
@@ -404,7 +404,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
       inputs.add(openDevToolsLabel);
     }
 
-    viewUtils.presentClickableLabel(toolWindow, inputs);
+    devToolsViewUtils.presentClickableLabel(toolWindow, inputs);
   }
 
   protected void presentOpenDevToolsOptionWithMessage(FlutterApp app,
@@ -414,7 +414,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
     final List<LabelInput> inputs = new ArrayList<>();
     inputs.add(new LabelInput(message));
     inputs.add(openDevToolsLabel(app, toolWindow, ideFeature));
-    viewUtils.presentClickableLabel(toolWindow, inputs);
+    devToolsViewUtils.presentClickableLabel(toolWindow, inputs);
   }
 
   private void replacePanelLabel(ToolWindow toolWindow, JComponent label) {

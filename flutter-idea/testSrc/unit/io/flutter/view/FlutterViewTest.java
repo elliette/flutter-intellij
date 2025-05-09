@@ -48,7 +48,7 @@ public class FlutterViewTest {
   JxBrowserManager mockJxBrowserManager = mock(JxBrowserManager.class);
 
   MockedStatic<ApplicationManager> mockedStaticApplicationManager;
-  ViewUtils viewUtilsSpy;
+  DevToolsViewUtils devToolsViewUtilsSpy;
 
   @Before
   public void setUp() throws Exception {
@@ -71,8 +71,8 @@ public class FlutterViewTest {
       when(mockContentManager.getFactory()).thenReturn(mockContentFactory);
 
       // Spy on the ViewUtils class.
-      final ViewUtils viewUtils = new ViewUtils();
-      viewUtilsSpy = spy(viewUtils);
+      final DevToolsViewUtils devToolsViewUtils = new DevToolsViewUtils("");
+      devToolsViewUtilsSpy = spy(devToolsViewUtils);
     }
   }
 
@@ -87,7 +87,7 @@ public class FlutterViewTest {
   public void testHandleJxBrowserInstalled() {
     // If JxBrowser has been installed, we should use the DevTools instance to open the embedded browser.
     final JxBrowserUtils mockJxBrowserUtils = mock(JxBrowserUtils.class);
-    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockJxBrowserUtils, viewUtilsSpy);
+    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockJxBrowserUtils, devToolsViewUtilsSpy);
     final FlutterView spy = spy(flutterView);
 
     doNothing().when(spy).verifyEventDispatchThread();
@@ -108,15 +108,15 @@ public class FlutterViewTest {
     when(mockJxBrowserManager.getLatestFailureReason()).thenReturn(new InstallationFailedReason(FailureType.FILE_DOWNLOAD_FAILED));
 
     // If JxBrowser failed to install, we should show a failure message that allows the user to manually retry.
-    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockJxBrowserUtils, viewUtilsSpy);
+    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockJxBrowserUtils, devToolsViewUtilsSpy);
     final FlutterView spy = spy(flutterView);
-    doNothing().when(viewUtilsSpy).presentClickableLabel(
+    doNothing().when(devToolsViewUtilsSpy).presentClickableLabel(
       eq(mockToolWindow),
       anyList()
     );
 
     spy.handleJxBrowserInstallationFailed(mockApp, mockToolWindow, DevToolsIdeFeature.TOOL_WINDOW);
-    verify(viewUtilsSpy, times(1)).presentClickableLabel(
+    verify(devToolsViewUtilsSpy, times(1)).presentClickableLabel(
       eq(mockToolWindow),
       anyList()
     );
@@ -128,7 +128,7 @@ public class FlutterViewTest {
 
     // If the JxBrowser installation is initially in progress, we should show a message about the installation.
     // If the installation quickly finishes (on the first re-check), then we should call the function to handle successful installation.
-    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, viewUtilsSpy);
+    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, devToolsViewUtilsSpy);
     final FlutterView spy = spy(flutterView);
 
     doNothing().when(spy).presentOpenDevToolsOptionWithMessage(any(), any(), any(), any());
@@ -146,7 +146,7 @@ public class FlutterViewTest {
 
     // If the JxBrowser installation is in progress and is not finished on the first re-check, we should start a thread to wait for the
     // installation to finish.
-    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, viewUtilsSpy);
+    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, devToolsViewUtilsSpy);
     final FlutterView spy = spy(flutterView);
 
     doNothing().when(spy).presentOpenDevToolsOptionWithMessage(any(), any(), any(), any());
@@ -164,7 +164,7 @@ public class FlutterViewTest {
     when(mockJxBrowserManager.waitForInstallation(INSTALLATION_WAIT_LIMIT_SECONDS)).thenReturn(JxBrowserStatus.INSTALLATION_FAILED);
 
     // If waiting for JxBrowser installation completes without timing out, then we should return to event thread.
-    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, viewUtilsSpy);
+    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, devToolsViewUtilsSpy);
     final FlutterView spy = spy(flutterView);
 
     doNothing().when(spy).handleUpdatedJxBrowserStatusOnEventThread(any(), any(), any(), any());
@@ -182,7 +182,7 @@ public class FlutterViewTest {
     when(mockJxBrowserManager.waitForInstallation(INSTALLATION_WAIT_LIMIT_SECONDS)).thenThrow(new TimeoutException());
 
     // If the JxBrowser installation doesn't complete on time, we should show a timed out message.
-    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, viewUtilsSpy);
+    final FlutterView flutterView = new FlutterView(mockProject, mockJxBrowserManager, mockUtils, devToolsViewUtilsSpy);
     final FlutterView spy = spy(flutterView);
 
     doNothing().when(spy).presentOpenDevToolsOptionWithMessage(any(), any(), any(), any());

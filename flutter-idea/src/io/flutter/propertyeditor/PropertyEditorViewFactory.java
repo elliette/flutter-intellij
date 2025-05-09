@@ -6,8 +6,11 @@
 package io.flutter.propertyeditor;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
+import com.intellij.util.messages.MessageBusConnection;
 import io.flutter.FlutterUtils;
 import io.flutter.actions.RefreshToolWindowAction;
 import io.flutter.bazel.WorkspaceCache;
@@ -20,7 +23,7 @@ import io.flutter.sdk.FlutterSdk;
 import io.flutter.sdk.FlutterSdkVersion;
 import io.flutter.utils.AsyncUtils;
 import io.flutter.utils.OpenApiUtils;
-import io.flutter.view.ViewUtils;
+import io.flutter.view.DevToolsViewUtils;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +34,7 @@ public class PropertyEditorViewFactory implements ToolWindowFactory {
   @NotNull private static String TOOL_WINDOW_ID = "Flutter Property Editor";
 
   @NotNull
-  private final ViewUtils viewUtils = new ViewUtils();
+  private final DevToolsViewUtils devToolsViewUtils = new DevToolsViewUtils(TOOL_WINDOW_ID);
 
   @Override
   public Object isApplicableAsync(@NotNull Project project, @NotNull Continuation<? super Boolean> $completion) {
@@ -42,41 +45,12 @@ public class PropertyEditorViewFactory implements ToolWindowFactory {
 
   @Override
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-    FlutterSdk sdk = FlutterSdk.getFlutterSdk(project);
-    FlutterSdkVersion sdkVersion = sdk == null ? null : sdk.getVersion();
-
     DartPluginVersion dartPluginVersion = DartPlugin.getDartPluginVersion();
     if (!dartPluginVersion.supportsPropertyEditor()) {
-      viewUtils.presentLabel(toolWindow, "Flutter Property Editor requires a newer version of the Dart plugin.");
+      devToolsViewUtils.presentLabel(toolWindow, "Flutter Property Editor requires a newer version of the Dart plugin.");
       return;
     }
 
-    AsyncUtils.whenCompleteUiThread(
-      DevToolsService.getInstance(project).getDevToolsInstance(),
-      (instance, error) -> {
-        final boolean inValidState = viewUtils.verifyDevToolsPanelStateIsValid(toolWindow, project, instance, error);
-        if (!inValidState) {
-          return;
-        }
-
-        final DevToolsUrl devToolsUrl = new DevToolsUrl.Builder()
-          .setDevToolsHost(instance.host())
-          .setDevToolsPort(instance.port())
-          .setPage("propertyEditor")
-          .setEmbed(true)
-          .setFlutterSdkVersion(sdkVersion)
-          .setWorkspaceCache(WorkspaceCache.getInstance(project))
-          .setIdeFeature(DevToolsIdeFeature.TOOL_WINDOW)
-          .build();
-
-        OpenApiUtils.safeInvokeLater(() -> {
-          Optional.ofNullable(
-              FlutterUtils.embeddedBrowser(project))
-            .ifPresent(embeddedBrowser -> embeddedBrowser.openPanel(toolWindow, "Property Editor", devToolsUrl, System.out::println));
-        });
-      }
-    );
-
-    toolWindow.setTitleActions(List.of(new RefreshToolWindowAction(TOOL_WINDOW_ID)));
+    devToolsViewUtils.initDevToolsView(project, toolWindow, "propertyEditor");
   }
 }

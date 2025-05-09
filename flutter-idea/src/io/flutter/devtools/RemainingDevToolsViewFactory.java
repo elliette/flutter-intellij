@@ -17,20 +17,22 @@ import io.flutter.sdk.FlutterSdk;
 import io.flutter.sdk.FlutterSdkVersion;
 import io.flutter.utils.AsyncUtils;
 import io.flutter.utils.OpenApiUtils;
+import io.flutter.view.EmbeddedBrowser;
 import io.flutter.view.FlutterViewMessages;
-import io.flutter.view.ViewUtils;
+import io.flutter.view.DevToolsViewUtils;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public class RemainingDevToolsViewFactory implements ToolWindowFactory {
   @NotNull private static String TOOL_WINDOW_ID = "Flutter DevTools";
 
   @NotNull
-  private final ViewUtils viewUtils = new ViewUtils();
+  private final DevToolsViewUtils devToolsViewUtils = new DevToolsViewUtils(TOOL_WINDOW_ID);
 
   public static void init(Project project) {
     project.getMessageBus().connect().subscribe(
@@ -47,40 +49,9 @@ public class RemainingDevToolsViewFactory implements ToolWindowFactory {
 
   @Override
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow window) {
-    final ContentManager contentManager = window.getContentManager();
-    FlutterSdk sdk = FlutterSdk.getFlutterSdk(project);
-    FlutterSdkVersion sdkVersion = sdk == null ? null : sdk.getVersion();
     RemainingDevToolsViewService service = project.getService(RemainingDevToolsViewService.class);
-
-    AsyncUtils.whenCompleteUiThread(
-      DevToolsService.getInstance(project).getDevToolsInstance(),
-      (instance, error) -> {
-        final boolean inValidState = viewUtils.verifyDevToolsPanelStateIsValid(window, project, instance, error);
-        if (!inValidState) {
-          return;
-        }
-
-        final DevToolsUrl devToolsUrl = new DevToolsUrl.Builder()
-          .setDevToolsHost(instance.host())
-          .setDevToolsPort(instance.port())
-          .setHide("home,inspector,deep-links,extensions,debugger")
-          .setEmbed(true).setFlutterSdkVersion(sdkVersion)
-          .setWorkspaceCache(WorkspaceCache.getInstance(project))
-          .setIdeFeature(DevToolsIdeFeature.TOOL_WINDOW)
-          .build();
-
-        OpenApiUtils.safeInvokeLater(() -> {
-          Optional.ofNullable(
-              FlutterUtils.embeddedBrowser(project))
-            .ifPresent(embeddedBrowser -> {
-              embeddedBrowser.openPanel(window, "Flutter DevTools", devToolsUrl, System.out::println);
-              service.setEmbeddedBrowser(embeddedBrowser);
-            });
-        });
-      }
-    );
-
-    window.setTitleActions(List.of(new RefreshToolWindowAction(TOOL_WINDOW_ID)));
+    Consumer<EmbeddedBrowser> onBrowserLoaded = (embeddedBrowser) -> { service.setEmbeddedBrowser(embeddedBrowser); };
+    devToolsViewUtils.initDevToolsView(project, window, "home,inspector,deep-links,extensions,debugger", true, onBrowserLoaded);
   }
 
   @Nullable
