@@ -44,6 +44,9 @@ public class EmbeddedBrowserEngine {
       optionsBuilder.addSwitch("--force-device-scale-factor=1");
     }
 
+    int debuggingPort = 9222;
+    optionsBuilder.remoteDebuggingPort(debuggingPort).userAgent("JxBrowser/IntelliJ");
+
     final EngineOptions options = optionsBuilder.build();
 
     Engine temp;

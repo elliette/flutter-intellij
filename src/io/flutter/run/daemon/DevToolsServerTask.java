@@ -90,12 +90,18 @@ class DevToolsServerTask extends Task.Backgroundable {
       // This is only for development to check integration with a locally run DevTools server.
       // To enable, follow the instructions in:
       // https://github.com/flutter/flutter-intellij/blob/main/CONTRIBUTING.md#developing-with-local-devtools
+      // final String localDevToolsDir = Registry.get("flutter.local.devtools.dir").asString().isEmpty() ?  "/Users/elliottbrooks/dev/devtools" : Registry.get("flutter.local.devtools.dir").asString();
       final String localDevToolsDir = Registry.stringValue(LOCAL_DEVTOOLS_DIR);
+      LOG.info("LOCAL DEVTOOLS DIR " + localDevToolsDir);
       if (!localDevToolsDir.isEmpty()) {
         LOG.info("Starting local DevTools server at: " + localDevToolsDir);
         progressIndicator.setFraction(60);
         progressIndicator.setText2("Starting local server");
         setUpLocalServer(localDevToolsDir);
+        return;
+      }
+      else {
+        LOG.info("NOT SERVING LOCAL DEVTOOLS DIRECTORY");
       }
 
       // Wait for the Dart Plugin to start the DevTools server.

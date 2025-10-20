@@ -5,6 +5,7 @@
  */
 package io.flutter.jxbrowser;
 
+import com.intellij.ide.ui.UISettingsUtils;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -13,28 +14,29 @@ import com.teamdev.jxbrowser.browser.Browser;
 import com.teamdev.jxbrowser.browser.UnsupportedRenderingModeException;
 import com.teamdev.jxbrowser.browser.callback.AlertCallback;
 import com.teamdev.jxbrowser.browser.callback.ConfirmCallback;
+import com.teamdev.jxbrowser.browser.callback.ShowContextMenuCallback;
 import com.teamdev.jxbrowser.browser.callback.input.PressKeyCallback;
 import com.teamdev.jxbrowser.browser.event.ConsoleMessageReceived;
 import com.teamdev.jxbrowser.engine.Engine;
+import com.teamdev.jxbrowser.frame.EditorCommand;
 import com.teamdev.jxbrowser.js.ConsoleMessage;
+import com.teamdev.jxbrowser.menu.internal.rpc.ContextMenuContentType;
+import com.teamdev.jxbrowser.permission.PermissionType;
+import com.teamdev.jxbrowser.permission.callback.RequestPermissionCallback;
 import com.teamdev.jxbrowser.ui.KeyCode;
 import com.teamdev.jxbrowser.ui.event.KeyPressed;
 import com.teamdev.jxbrowser.view.swing.BrowserView;
 import com.teamdev.jxbrowser.view.swing.callback.DefaultAlertCallback;
 import com.teamdev.jxbrowser.view.swing.callback.DefaultConfirmCallback;
-import io.flutter.logging.PluginLogger;
-import io.flutter.settings.FlutterSettings;
-import io.flutter.utils.AsyncUtils;
-import io.flutter.utils.JxBrowserUtils;
-import io.flutter.utils.ZoomLevelSelector;
-import io.flutter.view.EmbeddedBrowser;
-import io.flutter.view.EmbeddedTab;
-import io.flutter.utils.LabelInput;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import com.teamdev.jxbrowser.zoom.Zoom;
 import com.teamdev.jxbrowser.zoom.ZoomLevel;
-import com.intellij.ide.ui.UISettingsUtils;
+import io.flutter.logging.PluginLogger;
+import io.flutter.settings.FlutterSettings;
+import io.flutter.utils.*;
+import io.flutter.view.EmbeddedBrowser;
+import io.flutter.view.EmbeddedTab;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -55,6 +57,16 @@ class EmbeddedJxBrowserTab implements EmbeddedTab {
   public EmbeddedJxBrowserTab(Engine engine) {
     this.engine = engine;
 
+    this.engine.permissions().set(RequestPermissionCallback.class, (params, tell) -> {
+      var type = params.permissionType();
+      if (type == PermissionType.CLIPBOARD_READ_WRITE
+          || type == PermissionType.CLIPBOARD_SANITIZED_WRITE) {
+        tell.grant();
+      } else {
+        tell.deny();
+      }
+    });
+
     try {
       this.browser = engine.newBrowser();
       this.zoom = this.browser.zoom();
@@ -63,6 +75,30 @@ class EmbeddedJxBrowserTab implements EmbeddedTab {
         final ConsoleMessage consoleMessage = event.consoleMessage();
         LOG.info("Browser message(" + consoleMessage.level().name() + "): " + consoleMessage.message());
       });
+
+      browser.set(ShowContextMenuCallback.class, (params, tell) -> {
+        var contentType = params.contentType();
+        if (contentType.contains(ContextMenuContentType.CONTEXT_MENU_CONTENT_TYPE_COPY)) {
+          // Some text is selected, so you can add the "Copy" item to the context menu.
+        }
+        if (contentType.contains(ContextMenuContentType.CONTEXT_MENU_CONTENT_TYPE_EDITABLE)) {
+          // User right-clicked on the editable content, so you can add
+          // the "Paste" item to the context menu.
+        }
+        tell.close();
+      });
+
+
+
+      // browser.settings().allowJavaScriptAccessClipboard();
+      // browser.mainFrame().ifPresent(frame ->
+      //                                 frame.executeJavaScript("document.execCommand('copy')")
+      // );
+
+      //browser.mainFrame().ifPresent(frame ->
+      //                                frame.execute(EditorCommand.copy())
+      //);
+
     }
     catch (UnsupportedRenderingModeException ex) {
       // Skip using a transparent background if an exception is thrown.
